@@ -1,0 +1,10 @@
+   local:
+          x: 0.0                        # meter
+          y: 0.0                        # meter
+          z: 0.0                        # meter
+   lla:
+        
+          latitude: 	0.560288572   	# radians
+          longtitude: 	0.608259273 	# radians
+          altitude: 	0.000000000   	# meter
+          bearing: 		0.761922401		# radians

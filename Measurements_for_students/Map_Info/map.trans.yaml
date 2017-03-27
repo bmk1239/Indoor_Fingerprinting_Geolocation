@@ -1,0 +1,17 @@
+world_map_coord:
+    point_1:
+        x: -34.00	# meter
+        y: 0.00		# meter
+    point_2:
+        x: 0.00		# meter
+        y: 0.00		# meter
+architect_map_coord:
+    point_1:
+        x: 420		# pixel
+        y: 1435		# pixel
+    point_2:
+        x: 1779		# pixel
+        y: 1434		# pixel
+
+		
+		
