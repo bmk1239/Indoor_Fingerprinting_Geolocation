@@ -15,13 +15,13 @@ responders = []
 # create fingerprint entity in the DB
 def createFingerprint(ResultDic, timestamp, coordFile, writer):
     # TODO - Tomer
-    x, y, lat, lon, alt = utilities.findLoc(timestamp, coordFile)
+    lat, lon, alt = utilities.findLoc(timestamp, coordFile)
     i = 0;
     # go over each measurement in the fingerprint and write it to csv file
     for e in ResultDic:
         if str(e) not in responders:
             continue;
-        writer.writerow({'mac': str(e), 'rssi[db]': str(ResultDic[e][0]),'x[m]' : str(x[i]),'y[m]' : str(y[i]),'Latitude' : str(lat[i]),
+        writer.writerow({'mac': str(e), 'rssi[db]': str(ResultDic[e][0]),'Latitude' : str(lat[i]),
                          'Longitude' : str(lon[i]),'Altitude':str(alt[i]) ,'range[cm]': str(ResultDic[e][1])})
         i += 1
 
@@ -31,7 +31,7 @@ def readFiles2csv(listOfFiles):
     # data base of fingerprint in csv format
     csvfile = open("Database.csv", "w");
     # header of DB
-    fieldnames = ['mac', 'rssi[db]', 'x[m]', 'y[m]', 'Latitude', 'Longitude','Altitude' ,'range[cm]']
+    fieldnames = ['mac', 'rssi[db]', 'Latitude', 'Longitude','Altitude' ,'range[cm]']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     # go over each file in the list
@@ -43,8 +43,6 @@ def readFiles2csv(listOfFiles):
     while j < len(listOfFiles):
         result = listOfFiles[j]
         with open(result) as fp:
-            k = 0;
-            n = 0
             ResultDic = dict()
             # go over each line in the file
             for line in fp:
@@ -52,9 +50,16 @@ def readFiles2csv(listOfFiles):
                 # mac address
                 key = ''
                 l = []
-                timestamp = []
                 # go over each part of the line
                 for s in line.split():
+                    # if we finished go over each responder in the fingerprint(16 responders at most), write result into DB
+                    if s in ResultDic:
+                        # write fingerprint into csv file
+                        createFingerprint(ResultDic, timestamp, listOfFiles[j + 1], writer)
+                        # go to next fingerprint
+                        ResultDic.clear()
+                        timestamp = []
+                        i = 0
                     if i == 0:
                         key = s;
                     if i == 1:
@@ -67,21 +72,10 @@ def readFiles2csv(listOfFiles):
                         if s != "SUCCESS":
                             l[0] = -120
                     i += 1
-                tmp = l[0]
-                l[0] = l[1]
-                l[1] = tmp
                 # save it in Dictionary
                 ResultDic[key] = l;
-                # if we finished go over each responder in the fingerprint(16 responders at all), write result into DB
-                if k == 15:
-                    # write fingerprint into csv file
-                    createFingerprint(ResultDic, timestamp, listOfFiles[j+1], writer)
-                    # go to next fingerprint
-                    ResultDic.clear()
-                    k = 0
-                else:
-                    k += 1
-                n += 1
+            if bool(ResultDic):
+                createFingerprint(ResultDic, timestamp, listOfFiles[j + 1], writer)
         j += 2
     csvfile.close();
     pass

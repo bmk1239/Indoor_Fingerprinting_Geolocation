@@ -6,8 +6,8 @@ import utilities
 
 # csvfilename - file name of fingerprint DB in csv format
 # list of live rssi reading from user
-# first algorithm using rssi and fingerprints only to get user location
-def algorithm1(csvfilename, myRssi):
+# returns dictionary with distance, location and ranges for each fingerprint
+def allDistances(csvfilename, myRssi):
     # Dictionary contains x,y,z,alt,lon,lat for each fingerprint
     dic0 = dict()
     # Dictionary contains rssi values of each fingerprint
@@ -16,37 +16,57 @@ def algorithm1(csvfilename, myRssi):
     with open(csvfilename) as csvfile:
         s = "".join(["f", str(0)])
         j = 0
-        i = 0
         l = []
-        x, y, z = 0.0, 0.0, 0.0
+        l1 = dict()
         reader = csv.DictReader(csvfile)
+        i = -1
         for row in reader:
-            if i == 0:
-                x, y, z = row['x'], row['y'], row['Altitude']
-                dic0[s] = [x,y,z,row['Latitude'], row['Longitude']]
-            l += [row['rssi']]
-            if i == 15:
+            if (row['mac'] in l1):
                 dic1[s] = l
                 j += 1
                 s = "".join(["f", str(j)])
                 i = 0
                 l = []
+                l1 = dict()
             else:
                 i += 1
+            macs.append(row['mac'])
+            if i == 0:
+                lat1 = float(row['Latitude'])
+                lon1 = float(row['Longitude'])
+                alt1 = float(row['Altitude'])
+                x, y, z = utilities.lla2ecef((lat1, lon1, alt1))
+                dic0[s] = [x,y,z, lat1, lon1, alt1]
+            l.append(row['rssi[db]'])
+            l1[row['mac']] = row['range[cm]']
+        if len(l) != 0:
+            dic1[s] = [l,l1]
+    dic = dict()
+    for e in dic1:
+        d = utilities.calcDist(myRssi,dic1[e][0], 2)
+        dic[e] = [d,dic0[e],dic1[e][1]]
+    return dic
+
+
+# csvfilename - file name of fingerprint DB in csv format
+# list of live rssi reading from user
+# first algorithm using rssi and fingerprints only to get user location
+def algorithm1(csvfilename, myRssi):
+    dic = allDistances(csvfilename, myRssi)
     min = -1
     imin = ""
     # using 1 nearest neighbor algorithm1 to find user location
-    for e in dic1:
-        d = utilities.calcDist(myRssi,dic1[e], 2)
+    for e in dic:
         if imin == "":
-            min = d
+            min = dic[e][0]
             imin = e
         else:
-            if min > d:
-                min = d
+            if min > dic[e][0]:
+                min = dic[e][0]
                 imin = e
-    x, y, alt,lat,lon = dic0[imin]
-    print x, y, alt,lat,lon
+    x, y, alt, lat, lon = dic[e][1]
+    print x, y, alt, lat, lon
+    pass
 
 # csvfilename - file name of fingerprint DB in csv format
 # list of live rssi reading from user
@@ -64,15 +84,15 @@ def algorithm3(csvfilename, myRanges):
         reader = csv.DictReader(csvfile)
         dic = dict()
         for row in reader:
-            lat = float(row['Latitude'])
-            lon = float(row['Longitude'])
-            alt = float(row['Altitude'])
-            x, y, z = utilities.lla2ecef((lat, lon, alt))
+            lat1 = float(row['Latitude'])
+            lon1 = float(row['Longitude'])
+            alt1 = float(row['Altitude'])
+            x, y, z = utilities.lla2ecef((lat1, lon1, alt1))
             l = [x, y, z]
             dic[row['mac']] = l
     x, y, z = utilities.trilateration(dic,myRanges)
     lat, lon, alt = utilities.ecef2lla((x,y,z))
-    print x, y, z,lat, lon, alt
+    print lat, lon, alt
     pass
 
 def main(argv):
