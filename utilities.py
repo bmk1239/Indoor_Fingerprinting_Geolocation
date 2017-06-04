@@ -49,13 +49,20 @@ def ecef2lla(ecef):
     return (lon,lat,alt)
 
 
-# timestamp - list of timestamps to compare with coordFile
-# coordFile - name of coordFile
-# returns - list of x, list of y, list of latitude, list of longitude and list of altitude extracts from coordFile.
-# list size same as timestamp size
-def findLoc(timestamp, coordFile):
-
-    pass
+# timestamp - Dictionary of timestamps to compare with coordFile
+# Cord_arr - array of coordFile
+# returns - Dictionary of latitude, Dictionary of longitude and Dictionary of altitude extracts from Cord_arr.
+def findLoc(timestamp, Cord_arr):
+    lat = {}
+    lon = {}
+    alt = {}
+    for t in timestamp:
+        ts = timestamp[t]
+        index=minDiffEntry(Cord_arr,ts)
+        lat[t] = (Cord_arr[index][1])
+        lon[t] = (Cord_arr[index][2])
+        alt[t] = (Cord_arr[index][3])
+    return lat,lon,alt
 
 # code converted from https://github.com/subpos/subpos_receiver/blob/master/Trilateration.cpp
 # RespLocDic - Dictionary with the location of each responder in cartesian coordinate
@@ -115,5 +122,25 @@ def calcDist(f_0, f_i, q):
         sum += pow(x,q)
     d = abs(sum)
     return pow(d,1/q)
+
+
+# def changeTimeFormat(t):
+def minDiffEntry(arr,time):
+    min=9999999999999999
+    minindex=-1
+    for i in xrange(len(arr)):
+        diff=abs(time-arr[i][0])
+        if abs(time-arr[i][0])<min:
+            min=diff
+            minindex=i
+            # print minindex,diff
+    return  minindex
+
+
+
+
+
+
+
 
 

@@ -9,31 +9,31 @@ import xlrd
 responders = []
 
 # ResultDic - Dictionary contains rssi value and range value from each responder
-# timestamp - list of timestamp to compare with timestamp in coordFile
-# coordFile - name of coord file with the location of irobot in each measurement
+# timestamp - Dictionary of timestamp to compare with timestamp in coordFile
+# Cord_arr - coord array with the location of irobot in each measurement
 # writer - writer of the open csv file
 # create fingerprint entity in the DB
-def createFingerprint(ResultDic, timestamp, coordFile, writer):
-    # TODO - Tomer
-    lat, lon, alt = utilities.findLoc(timestamp, coordFile)
-    i = 0;
+def createFingerprint(ResultDic, timestamp, Cord_arr, writer):
+    if len(ResultDic) != 15:
+        print len(ResultDic)
+    lat, lon, alt = utilities.findLoc(timestamp, Cord_arr)
     # go over each measurement in the fingerprint and write it to csv file
     for e in ResultDic:
-        if str(e) not in responders:
-            continue;
-        writer.writerow({'mac': str(e), 'rssi[db]': str(ResultDic[e][0]),'Latitude' : str(lat[i]),
-                         'Longitude' : str(lon[i]),'Altitude':str(alt[i]) ,'range[cm]': str(ResultDic[e][1])})
-        i += 1
+        writer.writerow({'mac': str(e), 'rssi[db]': str(ResultDic[e][0]),'Latitude' : str(lat[e]),
+                         'Longitude' : str(lon[e]),'Altitude':alt[e][:-1] ,'range[cm]': str(ResultDic[e][1])})
 
 # listOfFiles - tuple of result file and coord file
 # create csv file with DB of fingerprints
 def readFiles2csv(listOfFiles):
     # data base of fingerprint in csv format
-    csvfile = open("Database.csv", "w");
+    csvfile1 = open("Database.csv", "wb");
+    csvfile2 = open("User.csv", "wb");
     # header of DB
     fieldnames = ['mac', 'rssi[db]', 'Latitude', 'Longitude','Altitude' ,'range[cm]']
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
+    writer1 = csv.DictWriter(csvfile1, fieldnames=fieldnames)
+    writer1.writeheader()
+    writer2 = csv.DictWriter(csvfile2, fieldnames=fieldnames)
+    writer2.writeheader()
     # go over each file in the list
     j = 0
     with open("responders.csv") as csvfile:
@@ -41,9 +41,19 @@ def readFiles2csv(listOfFiles):
         for row in reader:
             responders.append(row['mac'])
     while j < len(listOfFiles):
+        print listOfFiles[j], listOfFiles[j + 1]
         result = listOfFiles[j]
         with open(result) as fp:
             ResultDic = dict()
+            timestamp = {}
+            with open(listOfFiles[j + 1], 'r') as f:
+                data = f.readlines()
+            Cord_arr = []
+            for lines in data:
+                params = lines.split(" ")
+                Cord_arr.append((round(float(params[0]), 6) * (10 ** 6), params[3], params[4], params[5]))
+            seen = ""
+            count = 1
             # go over each line in the file
             for line in fp:
                 i = 0
@@ -53,17 +63,27 @@ def readFiles2csv(listOfFiles):
                 # go over each part of the line
                 for s in line.split():
                     # if we finished go over each responder in the fingerprint(16 responders at most), write result into DB
-                    if s in ResultDic:
+                    if s == seen:
                         # write fingerprint into csv file
-                        createFingerprint(ResultDic, timestamp, listOfFiles[j + 1], writer)
+                        if count < 10:
+                            createFingerprint(ResultDic, timestamp, Cord_arr , writer1)
+                        else:
+                            createFingerprint(ResultDic, timestamp, Cord_arr, writer2)
+                            count = 1
+                        count += 1
                         # go to next fingerprint
                         ResultDic.clear()
-                        timestamp = []
+                        timestamp.clear()
+                        seen = ""
                         i = 0
                     if i == 0:
+                        if seen == "":
+                            seen = s
+                        if s not in responders:
+                            break;
                         key = s;
                     if i == 1:
-                        timestamp.append(float(s))
+                        timestamp[key] = float(s)
                     # rssi value or range value
                     if i == 2 or i == 7:
                         l.append(float(s))
@@ -71,11 +91,14 @@ def readFiles2csv(listOfFiles):
                     if i == 10:
                         if s != "SUCCESS":
                             l[0] = -120
+                        ResultDic[key] = l;
                     i += 1
                 # save it in Dictionary
-                ResultDic[key] = l;
             if bool(ResultDic):
-                createFingerprint(ResultDic, timestamp, listOfFiles[j + 1], writer)
+                if count < 10:
+                    createFingerprint(ResultDic, timestamp, Cord_arr, writer1)
+                else:
+                    createFingerprint(ResultDic, timestamp, Cord_arr, writer2)
         j += 2
     csvfile.close();
     pass
@@ -85,7 +108,7 @@ def readFiles2csv(listOfFiles):
 def readXls2csv(File):
     sheet = xlrd.open_workbook(File).sheet_by_index(0)
     # responder file in csv format
-    csvfile = open("responders.csv", "w");
+    csvfile = open("responders.csv", "wb");
     # header of responder csv file
     fieldnames = ['mac', 'Latitude', 'Longitude','Altitude', 'Description']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

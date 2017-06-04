@@ -30,7 +30,6 @@ def allDistances(csvfilename, myRssi):
                 l1 = dict()
             else:
                 i += 1
-            macs.append(row['mac'])
             if i == 0:
                 lat1 = float(row['Latitude'])
                 lon1 = float(row['Longitude'])
@@ -72,8 +71,36 @@ def algorithm1(csvfilename, myRssi):
 # list of live rssi reading from user
 # ranges of user from responder - less than 3
 # second algorithm using rssi and fingerprints and range to get user location
-# TODO - tomer
 def algorithm2(csvfilename, myRssi, myRanges):
+    dic = allDistances(csvfilename, myRssi)
+    imins = []
+    while True:
+        if len(imins) == len(dic):
+            print "something is wrong"
+            x, y, alt, lat, lon = dic[imins[0]][1]
+            break
+        min = -1
+        imin = ""
+        for e in dic:
+            if e in imins:
+                continue
+            if imin == "":
+                min = dic[e][0]
+                imin = e
+            else:
+                if min > dic[e][0]:
+                    min = dic[e][0]
+                    imin = e
+        imins.add(e)
+        flag = True
+        for mac in myRanges:
+            if ((myRanges[mac] + dic[e][0]) < dic[e][2][mac]) or (abs(myRanges[mac] - dic[e][0]) > dic[e][2][mac]):
+                flag = False
+                break
+        if flag:
+            x, y, alt, lat, lon = dic[e][1]
+            break
+    print x, y, alt, lat, lon
     pass
 
 # csvfilename - file name of responders location
@@ -99,7 +126,6 @@ def main(argv):
     if(len(argv) < 6):
         print("Error: wrong number of arguments");
         return -1
-    findLocation(argv[0],argv[1:])
     pass
 
 if __name__ == "__main__":
