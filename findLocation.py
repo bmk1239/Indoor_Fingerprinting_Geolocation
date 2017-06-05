@@ -12,7 +12,7 @@ def allDistances(database, myRssi):
     for i in range(database.size):
         fp = database.list[i]
         assert isinstance(fp, objects.FingerPrint)
-        d = utilities.calcDist(myRssi,fp, 2)
+        d = utilities.calcDist(myRssi,fp, 2.0)
         fp.UpdateDistance(d)
     pass
 
@@ -84,8 +84,8 @@ def algorithm2(database, user):
             fpRaw = fp.list[i]
             assert isinstance(fpRaw, objects.FpRaw)
             if fpRaw.mac in myRanges:
-                if (((myRanges[fpRaw.mac] + fp.distance*100) < fpRaw.range) or
-                        (abs(myRanges[fpRaw.mac] - fp.distance*100) > fpRaw.range)):
+                if (((myRanges[fpRaw.mac] + fp.distance) < fpRaw.range) or
+                        (abs(myRanges[fpRaw.mac] - fp.distance) > fpRaw.range)):
                     flag = False
                     break
         if flag:
