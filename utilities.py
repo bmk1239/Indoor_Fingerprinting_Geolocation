@@ -5,28 +5,33 @@ from math import pow, cos, sin, sqrt, degrees, radians, atan2, pi
 from scipy import cos, sin, arctan, sqrt, arctan2
 import objects
 
-
 # assume WGS84
 wgs84_a = 6378137.0
 wgs84_f = 1.0 / 298.257223563
 wgs84_e2 = 2 * wgs84_f - np.power(wgs84_f,2)
 
 # code from https://github.com/ethz-asl/StructuralInspectionPlanner/blob/master/utils/ExportToPX4/SIP2PX4.py
-# lonLatAlt - conatins LLA in radians
+# lonLatAlt - conatins LLA in degrees
 # Coordinate conversion functions from LLA to cartesian
 def lla2ecef(lonLatAlt):
-    # LLA2ECEF Conversion (meters)
-    lon, lat, alt = lonLatAlt
+	# LLA2ECEF Conversion (meters)
+
+    latDeg, lonDeg, alt = lonLatAlt
     a, e2 = wgs84_a, wgs84_e2
+    lon = radians(lonDeg)
+    lat = radians(latDeg)
     chi = sqrt(1 - e2 * sin(lat) ** 2)
     q = (a / chi + alt) * cos(lat)
-    return (q * cos(lon),q * sin(lon),((a * (1 - e2) / chi) + alt) * sin(lat))
+    return (q * cos(lon),
+            q * sin(lon),
+            ((a * (1 - e2) / chi) + alt) * sin(lat))
 
 # code from https://github.com/ethz-asl/StructuralInspectionPlanner/blob/master/utils/ExportToPX4/SIP2PX4.py
 # ecef - contains x,y,z in meters
-# convert from cartesian coordinate to LLA in radians
+# convert from cartesian coordinate to LLA in degrees
 def ecef2lla(ecef):
-	# ECEF2LLA (radians)
+	# ECEF2LLA (degrees)
+
     x, y, z = ecef
     a, e2, f = wgs84_a, wgs84_e2, wgs84_f
     lon = atan2(y, x)
@@ -48,7 +53,9 @@ def ecef2lla(ecef):
         step += 1
     N = a / sqrt(1 - e2 * sin(lat) ** 2)
     alt = s * cos(lat) + (z + e2 * N * sin(lat)) * sin(lat) - N
-    return (lon,lat,alt)
+    return (degrees(lat),
+            degrees(lon),
+            alt)
 
 # timestamp - Dictionary of timestamps to compare with coordFile
 # Cord_arr - array of coordFile
@@ -72,7 +79,6 @@ def trilateration(resps, myRanges):
     assert isinstance(resps, objects.Responders)
     A = []
     b = []
-    flag = True
     if len(myRanges) < 3:
         print "Error:less than 3 ranges"
         return 0,0,0
@@ -94,8 +100,6 @@ def trilateration(resps, myRanges):
             if r2 < 0:
                 continue
             x2, y2, z2 = lla2ecef((resp2.Latitude, resp2.Longitude, resp2.Altitude))
-            if z1 != z2:
-                flag = False
             b1 = ((pow(x1, 2) - pow(x2, 2)) +
                   (pow(y1, 2) - pow(y2, 2)) +
                   (pow(z1, 2) - pow(z2, 2)) -
@@ -110,9 +114,8 @@ def trilateration(resps, myRanges):
         x,y, z = np.linalg.lstsq(A,b)[0]
     except:
         return 0,0,0
-    if flag:
-        z[0] = z1
-    return ecef2lla((x[0],y[0], z[0]))
+    lat, lon, alt = ecef2lla((x[0],y[0], z[0]))
+    return lat, lon, resp1.Altitude
     pass
 
 # algorithm from http://journals.sagepub.com/doi/full/10.1155/2015/429104
