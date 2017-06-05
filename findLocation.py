@@ -3,129 +3,134 @@
 import sys
 import csv
 import utilities
+import objects
 
-# csvfilename - file name of fingerprint DB in csv format
+# database - object of fingerprint DB
 # list of live rssi reading from user
-# returns dictionary with distance, location and ranges for each fingerprint
-def allDistances(csvfilename, myRssi):
-    # Dictionary contains x,y,z,alt,lon,lat for each fingerprint
-    dic0 = dict()
-    # Dictionary contains rssi values of each fingerprint
-    dic1 = dict()
-    # go over the csv file and extracts values
-    with open(csvfilename) as csvfile:
-        s = "".join(["f", str(0)])
-        j = 0
-        l = []
-        l1 = dict()
-        reader = csv.DictReader(csvfile)
-        i = -1
-        for row in reader:
-            if (row['mac'] in l1):
-                dic1[s] = l
-                j += 1
-                s = "".join(["f", str(j)])
-                i = 0
-                l = []
-                l1 = dict()
-            else:
-                i += 1
-            if i == 0:
-                lat1 = float(row['Latitude'])
-                lon1 = float(row['Longitude'])
-                alt1 = float(row['Altitude'])
-                x, y, z = utilities.lla2ecef((lat1, lon1, alt1))
-                dic0[s] = [x,y,z, lat1, lon1, alt1]
-            l.append(row['rssi[db]'])
-            l1[row['mac']] = row['range[cm]']
-        if len(l) != 0:
-            dic1[s] = [l,l1]
-    dic = dict()
-    for e in dic1:
-        d = utilities.calcDist(myRssi,dic1[e][0], 2)
-        dic[e] = [d,dic0[e],dic1[e][1]]
-    return dic
+# update distance for each fingerprint
+def allDistances(database, myRssi):
+    assert isinstance(database, objects.Database)
+    for i in range(database.size):
+        fp = database.list[i]
+        assert isinstance(fp, objects.FingerPrint)
+        d = utilities.calcDist(myRssi,fp, 2)
+        fp.UpdateDistance(d)
+    pass
 
 
-# csvfilename - file name of fingerprint DB in csv format
-# list of live rssi reading from user
+# database - object of fingerprint DB
+#  user - object for user
 # first algorithm using rssi and fingerprints only to get user location
-def algorithm1(csvfilename, myRssi):
-    dic = allDistances(csvfilename, myRssi)
+def algorithm1(database, user):
+    assert isinstance(database, objects.Database)
+    assert isinstance(user, objects.userData)
+    allDistances(database, user.rssiDic)
     min = -1
-    imin = ""
+    imin = -1
     # using 1 nearest neighbor algorithm1 to find user location
-    for e in dic:
-        if imin == "":
-            min = dic[e][0]
-            imin = e
+    for i in range(database.size):
+        fp = database.list[i]
+        assert isinstance(fp, objects.FingerPrint)
+        if imin == -1:
+            min = fp.distance
+            imin = i
         else:
-            if min > dic[e][0]:
-                min = dic[e][0]
-                imin = e
-    x, y, alt, lat, lon = dic[e][1]
-    print x, y, alt, lat, lon
+            if min > fp.distance:
+                min = fp.distance
+                imin = i
+    fp = database.list[imin]
+    assert isinstance(fp, objects.FingerPrint)
+    lat = fp.Latitude
+    lon = fp.Longitude
+    alt = fp.Altitude
+    return  lat, lon, alt
     pass
 
-# csvfilename - file name of fingerprint DB in csv format
-# list of live rssi reading from user
-# ranges of user from responder - less than 3
+# database - object of fingerprint DB
+#  user - object for user
 # second algorithm using rssi and fingerprints and range to get user location
-def algorithm2(csvfilename, myRssi, myRanges):
-    dic = allDistances(csvfilename, myRssi)
+def algorithm2(database, user):
+    assert isinstance(database, objects.Database)
+    assert isinstance(user, objects.userData)
+    allDistances(database, user.rssiDic)
     imins = []
+    myRanges = user.rangeDic
     while True:
-        if len(imins) == len(dic):
-            print "something is wrong"
-            x, y, alt, lat, lon = dic[imins[0]][1]
-            break
         min = -1
-        imin = ""
-        for e in dic:
-            if e in imins:
+        imin = -1
+        for i in range(database.size):
+            fp = database.list[i]
+            assert isinstance(fp, objects.FingerPrint)
+            if i in imins:
                 continue
-            if imin == "":
-                min = dic[e][0]
-                imin = e
+            if imin == -1:
+                min = fp.distance
+                imin = i
             else:
-                if min > dic[e][0]:
-                    min = dic[e][0]
-                    imin = e
-        imins.add(e)
+                if min > fp.distance:
+                    min = fp.distance
+                    imin = i
+        if imin == -1:
+            fp = database.list[imins[0]]
+            assert isinstance(fp, objects.FingerPrint)
+            lat = fp.Latitude
+            lon = fp.Longitude
+            alt = fp.Altitude
+            return lat, lon, alt
+        imins.append(imin)
         flag = True
-        for mac in myRanges:
-            if ((myRanges[mac] + dic[e][0]) < dic[e][2][mac]) or (abs(myRanges[mac] - dic[e][0]) > dic[e][2][mac]):
-                flag = False
-                break
+        fp = database.list[imin]
+        assert isinstance(fp, objects.FingerPrint)
+        for i in range(fp.size):
+            fpRaw = fp.list[i]
+            assert isinstance(fpRaw, objects.FpRaw)
+            if fpRaw.mac in myRanges:
+                if (((myRanges[fpRaw.mac] + fp.distance) < fpRaw.range) or
+                        (abs(myRanges[fpRaw.mac] - fp.distance) > fpRaw.range)):
+                    flag = False
+                    break
         if flag:
-            x, y, alt, lat, lon = dic[e][1]
-            break
-    print x, y, alt, lat, lon
+            lat = fp.Latitude
+            lon = fp.Longitude
+            alt = fp.Altitude
+            return lat, lon, alt
     pass
 
-# csvfilename - file name of responders location
-# ranges of user from responder - more than 2
+# resps - object of responder locations
+#  user - object for user
 # third algorithm using rssi and fingerprints and range to get user location
-def algorithm3(csvfilename, myRanges):
-    with open(csvfilename) as csvfile:
-        reader = csv.DictReader(csvfile)
-        dic = dict()
-        for row in reader:
-            lat1 = float(row['Latitude'])
-            lon1 = float(row['Longitude'])
-            alt1 = float(row['Altitude'])
-            x, y, z = utilities.lla2ecef((lat1, lon1, alt1))
-            l = [x, y, z]
-            dic[row['mac']] = l
-    x, y, z = utilities.trilateration(dic,myRanges)
-    lat, lon, alt = utilities.ecef2lla((x,y,z))
-    print lat, lon, alt
+def algorithm3(resps, user):
+    assert isinstance(resps, objects.Responders)
+    assert isinstance(user, objects.userData)
+    lat, lon, alt = utilities.trilateration(resps,user.rangeDic)
+    return lat, lon, alt
     pass
 
 def main(argv):
-    if(len(argv) < 6):
+    if (len(argv) < 3):
         print("Error: wrong number of arguments");
-        return -1
+    db = objects.Database()
+    resps = objects.Responders()
+    users = objects.AllusersData()
+    db.readFromCsv(argv[0])
+    resps.readFromCsv(argv[1])
+    users.readFromCsv(argv[2])
+    i = 0
+    print db
+    print "*************"
+    print resps
+    print "*************"
+    print users
+    pass
+    for user in users.list:
+        print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
+        lla1 = algorithm1(db,user)
+        lla2 = algorithm2(db, user)
+        lla3 = algorithm3(resps, user)
+        print "Algo1: {}".format(lla1)
+        print "Algo2: {}".format(lla2)
+        print "Algo3: {}".format(lla3)
+        i += 1
     pass
 
 if __name__ == "__main__":

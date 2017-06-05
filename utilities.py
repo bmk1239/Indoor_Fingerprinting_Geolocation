@@ -3,6 +3,8 @@ import sys, getopt
 import numpy as np
 from math import pow, cos, sin, sqrt, degrees, radians, atan2, pi
 from scipy import cos, sin, arctan, sqrt, arctan2
+import objects
+
 
 # assume WGS84
 wgs84_a = 6378137.0
@@ -48,7 +50,6 @@ def ecef2lla(ecef):
     alt = s * cos(lat) + (z + e2 * N * sin(lat)) * sin(lat) - N
     return (lon,lat,alt)
 
-
 # timestamp - Dictionary of timestamps to compare with coordFile
 # Cord_arr - array of coordFile
 # returns - Dictionary of latitude, Dictionary of longitude and Dictionary of altitude extracts from Cord_arr.
@@ -65,46 +66,53 @@ def findLoc(timestamp, Cord_arr):
     return lat,lon,alt
 
 # code converted from https://github.com/subpos/subpos_receiver/blob/master/Trilateration.cpp
-# RespLocDic - Dictionary with the location of each responder in cartesian coordinate
-# ResultDic - Dictionary with ranges of user from each responder (at least 3 valid ranges)
-def trilateration(RespLocDic, ResultDic):
+# resps - object with the locations of each responder in lla coordinate
+# myRanges - Dictionary with ranges of user from each responder (at least 3 valid ranges)
+def trilateration(resps, myRanges):
+    assert isinstance(resps, objects.Responders)
     A = []
     b = []
-    seen1 = []
     flag = True
-    print ResultDic
-    print RespLocDic
-    if len(ResultDic) == 0:
-        return 0, 0, 0
-    for e in ResultDic:
-        seen1.append(e)
-        # convert from cm to meter
-        r1 = (ResultDic[e])*0.01
+    if len(myRanges) < 3:
+        print "Error:less than 3 ranges"
+        return 0,0,0
+    for i in range(resps.size):
+        resp1 = resps.list[i]
+        assert isinstance(resp1, objects.RespoRaw)
+        if resp1.mac not in myRanges:
+            continue
+        r1 = (myRanges[resp1.mac])
         if r1 < 0:
-            return 0,0,0
-        x1 = float(RespLocDic[e][0])
-        y1 = float(RespLocDic[e][1])
-        z1 = float(RespLocDic[e][2])
-        for e1 in ResultDic:
-            if e1 in seen1:
+            continue
+        x1, y1, z1 = lla2ecef((resp1.Latitude,resp1.Longitude,resp1.Altitude))
+        for j in range(i+1,resps.size):
+            resp2 = resps.list[j]
+            assert isinstance(resp2, objects.RespoRaw)
+            if resp2.mac not in myRanges:
                 continue
-            r2 = (ResultDic[e1])*0.01
+            r2 = (myRanges[resp2.mac])
             if r2 < 0:
-                return 0,0,0
-            x2 = float(RespLocDic[e1][0])
-            y2 = float(RespLocDic[e1][1])
-            z2 = float(RespLocDic[e1][2])
+                continue
+            x2, y2, z2 = lla2ecef((resp2.Latitude, resp2.Longitude, resp2.Altitude))
             if z1 != z2:
                 flag = False
-            b1 = ((pow(x1, 2)-pow(x2, 2)) +
-                      (pow(y1, 2)-pow(y2, 2)) +
-                      (pow(z1, 2)-pow(z2, 2)) -
-                      (pow(r1, 2) - pow(r2, 2))) / 2
+            b1 = ((pow(x1, 2) - pow(x2, 2)) +
+                  (pow(y1, 2) - pow(y2, 2)) +
+                  (pow(z1, 2) - pow(z2, 2)) -
+                  (pow(r1, 2) - pow(r2, 2))) / 2
             b.append([b1]);
             A1 = [x1-x2, y1-y2, z1-z2]
             A.append(A1)
-    x,y,z = np.linalg.lstsq(A,b)[0]
-    return (x[0],y[0],z1 if flag else z[0])
+    if len(b) < 3:
+        print "Error:less than 3 ranges"
+        return 0, 0, 0
+    try:
+        x,y, z = np.linalg.lstsq(A,b)[0]
+    except:
+        return 0,0,0
+    if flag:
+        z[0] = z1
+    return ecef2lla((x[0],y[0], z[0]))
     pass
 
 # algorithm from http://journals.sagepub.com/doi/full/10.1155/2015/429104
@@ -115,10 +123,13 @@ def trilateration(RespLocDic, ResultDic):
 def calcDist(f_0, f_i, q):
     sum = 0.0
     for i in range(0,len(f_0)):
+        fpRaw = f_i.list[i]
+        assert isinstance(fpRaw, objects.FpRaw)
+        mac = fpRaw.mac
         try:
-            x = float(f_0[i]) - float(f_i[i])
+            x = float(f_0[mac]) - float(fpRaw.rssi)
         except IndexError:
-            print f_0, f_i
+            print "Error"
         sum += pow(x,q)
     d = abs(sum)
     return pow(d,1/q)
@@ -135,7 +146,6 @@ def minDiffEntry(arr,time):
             minindex=i
             # print minindex,diff
     return  minindex
-
 
 
 
