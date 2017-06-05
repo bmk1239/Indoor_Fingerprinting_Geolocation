@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import sys
-import csv
 import utilities
 import objects
 
@@ -85,8 +84,8 @@ def algorithm2(database, user):
             fpRaw = fp.list[i]
             assert isinstance(fpRaw, objects.FpRaw)
             if fpRaw.mac in myRanges:
-                if (((myRanges[fpRaw.mac] + fp.distance) < fpRaw.range) or
-                        (abs(myRanges[fpRaw.mac] - fp.distance) > fpRaw.range)):
+                if (((myRanges[fpRaw.mac] + fp.distance*100) < fpRaw.range) or
+                        (abs(myRanges[fpRaw.mac] - fp.distance*100) > fpRaw.range)):
                     flag = False
                     break
         if flag:
