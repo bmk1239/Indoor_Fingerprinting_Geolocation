@@ -80,7 +80,10 @@ def algorithm2(database, user):
         flag = True
         fp = database.list[imin]
         assert isinstance(fp, objects.FingerPrint)
+        count = 0
         for i in range(fp.size):
+            if count == 2:
+                break;
             fpRaw = fp.list[i]
             assert isinstance(fpRaw, objects.FpRaw)
             if fpRaw.mac in myRanges:
@@ -88,6 +91,7 @@ def algorithm2(database, user):
                         (abs(myRanges[fpRaw.mac] - fp.distance) > fpRaw.range)):
                     flag = False
                     break
+                count += 1
         if flag:
             lat = fp.Latitude
             lon = fp.Longitude
@@ -123,10 +127,10 @@ def main(argv):
     pass
     for user in users.list:
         print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
-        lla1 = algorithm1(db,user)
+        #lla1 = algorithm1(db,user)
         lla2 = algorithm2(db, user)
         lla3 = algorithm3(resps, user)
-        print "Algo1: {}".format(lla1)
+        #print "Algo1: {}".format(lla1)
         print "Algo2: {}".format(lla2)
         print "Algo3: {}".format(lla3)
         i += 1

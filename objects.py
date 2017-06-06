@@ -1,4 +1,5 @@
 import csv
+import operator
 
 class FpRaw:
     def __init__(self, mac, rssi, range,id):
@@ -168,7 +169,7 @@ class AllusersData:
                     sumLat, sumLon, sumAlt = 0.0, 0.0, 0.0
                 mac = row['mac']
                 rssiDic[mac] = float(row['rssi[db]'])
-                if float(row['range[cm]']) != 0.0:
+                if float(row['range[cm]']) > 0.0:
                     rangeDic[mac] = float(row['range[cm]'])
                 sumLat += float(row['Latitude'])
                 sumLon += float(row['Longitude'])
