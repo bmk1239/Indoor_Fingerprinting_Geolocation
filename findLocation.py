@@ -3,6 +3,7 @@
 import sys
 import utilities
 import objects
+import itertools
 
 # database - object of fingerprint DB
 # list of live rssi reading from user
@@ -105,8 +106,39 @@ def algorithm2(database, user):
 def algorithm3(resps, user):
     assert isinstance(resps, objects.Responders)
     assert isinstance(user, objects.userData)
-    lat, lon, alt = utilities.trilateration(resps,user.rangeDic)
-    return lat, lon, alt
+    if len(user.rangeDic) < 3:
+        print "Error: less than 3 ranges"
+        return 0,0,0
+    maxLat1, maxLon1 = 0.0, 0.0
+    minLat1, minLon1 = sys.maxint, sys.maxint
+    for resp in resps.list:
+        if resp.Latitude < minLat1:
+            minLat1 = resp.Latitude
+        if resp.Latitude > maxLat1:
+            maxLat1 = resp.Latitude
+        if resp.Longitude < minLon1:
+            minLon1 = resp.Longitude
+        if resp.Longitude > maxLon1:
+            maxLon1 = resp.Longitude
+    factor = 0.01
+    while True:
+        maxLon, minLon, maxLat, minLat = maxLon1, minLon1, maxLat1, minLat1
+        maxLon += (maxLon1 * factor)
+        minLon -= (minLon1 * factor)
+        maxLat += (maxLat1 * factor)
+        minLat -= (minLat1 * factor)
+        len1 = len(user.rangeDic)
+        while True:
+            result_list = map(dict, itertools.combinations(user.rangeDic.iteritems(), len1))
+            for dic in result_list:
+                lat, lon, alt = utilities.trilateration(resps, dic)
+                if (lat > minLat) and (lat < maxLat) and (lon > minLon) and (lon < maxLon):
+                    return lat, lon, alt
+            if len1 == 3:
+                break
+            len1 -= 1
+        factor += 0.005
+    return -1,-1,-1
     pass
 
 def main(argv):
@@ -125,15 +157,17 @@ def main(argv):
     print "*************"
     print users
     pass
+    count = 0;
     for user in users.list:
-        print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
-        #lla1 = algorithm1(db,user)
+        print "user {}: {}".format(i, (user.realLat, user.realLon, user.realAlt))
+        lla1 = algorithm1(db,user)
         lla2 = algorithm2(db, user)
         lla3 = algorithm3(resps, user)
-        #print "Algo1: {}".format(lla1)
+        print "Algo1: {}".format(lla1)
         print "Algo2: {}".format(lla2)
         print "Algo3: {}".format(lla3)
         i += 1
+    print count
     pass
 
 if __name__ == "__main__":

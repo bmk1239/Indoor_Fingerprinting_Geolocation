@@ -79,9 +79,7 @@ def trilateration(resps, myRanges):
     assert isinstance(resps, objects.Responders)
     A = []
     b = []
-    if len(myRanges) < 3:
-        print "Error:less than 3 ranges"
-        return 0,0,0
+    z = []
     for i in range(resps.size):
         resp1 = resps.list[i]
         assert isinstance(resp1, objects.RespoRaw)
@@ -91,6 +89,7 @@ def trilateration(resps, myRanges):
         if r1 < 0:
             continue
         x1, y1, z1 = lla2ecef((resp1.Latitude,resp1.Longitude,resp1.Altitude))
+        z.append(z1)
         for j in range(i+1,resps.size):
             resp2 = resps.list[j]
             assert isinstance(resp2, objects.RespoRaw)
@@ -100,22 +99,19 @@ def trilateration(resps, myRanges):
             if r2 < 0:
                 continue
             x2, y2, z2 = lla2ecef((resp2.Latitude, resp2.Longitude, resp2.Altitude))
+            z.append(z2)
             b1 = ((pow(x1, 2) - pow(x2, 2)) +
-                  (pow(y1, 2) - pow(y2, 2)) +
-                  (pow(z1, 2) - pow(z2, 2)) -
+                  (pow(y1, 2) - pow(y2, 2)) -
                   (pow(r1, 2) - pow(r2, 2))) / 2
             b.append([b1]);
-            A1 = [x1-x2, y1-y2, z1-z2]
+            A1 = [x1-x2, y1-y2]
             A.append(A1)
-    if len(b) < 3:
-        print "Error:less than 3 ranges"
-        return 0, 0, 0
     try:
-        x,y, z = np.linalg.lstsq(A,b)[0]
+        x,y = np.linalg.lstsq(A,b)[0]
     except:
         return 0,0,0
-    lat, lon, alt = ecef2lla((x[0],y[0], z[0]))
-    return lat, lon, resp1.Altitude
+    lat, lon, alt = ecef2lla((x[0],y[0], (sum(z)/len(z))))
+    return lat, lon, 0
     pass
 
 # algorithm from http://journals.sagepub.com/doi/full/10.1155/2015/429104
@@ -129,10 +125,7 @@ def calcDist(f_0, f_i, q):
         fpRaw = f_i.list[i]
         assert isinstance(fpRaw, objects.FpRaw)
         mac = fpRaw.mac
-        try:
-            x = float(f_0[mac]) - float(fpRaw.rssi)
-        except IndexError:
-            print "Error"
+        x = float(f_0[mac]) - float(fpRaw.rssi)
         sum += pow(x,q)
     d = abs(sum)
     return pow(d,1/q)
