@@ -4,6 +4,7 @@ import numpy as np
 from math import pow, cos, sin, sqrt, degrees, radians, atan2, pi
 from scipy import cos, sin, arctan, sqrt, arctan2
 import objects
+import re
 
 # assume WGS84
 wgs84_a = 6378137.0
@@ -142,6 +143,18 @@ def minDiffEntry(arr,time):
             minindex=i
             # print minindex,diff
     return  minindex
+
+
+
+def readFromResult():
+    file_arr=["algo1res.txt","algo2res.txt","algo3res.txt"]
+    ret_arr=[[],[],[]]
+    for i in range(3):
+        f=open(file_arr[i],"r")
+        for line in f:
+            ret_arr[i].append(eval(re.search("Algo\d: (.*)",line).groups(1)[0]))
+    return ret_arr
+
 
 
 
