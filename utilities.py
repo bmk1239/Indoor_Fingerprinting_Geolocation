@@ -81,22 +81,24 @@ def trilateration(resps, myRanges):
     A = []
     b = []
     z = []
+    seen = {}
     for i in range(resps.size):
         resp1 = resps.list[i]
         assert isinstance(resp1, objects.RespoRaw)
         if resp1.mac not in myRanges:
             continue
-        r1 = (myRanges[resp1.mac])
+        r1 = (myRanges[resp1.mac]) * 0.01
         if r1 < 0:
             continue
         x1, y1, z1 = lla2ecef((resp1.Latitude,resp1.Longitude,resp1.Altitude))
+        seen[resp1.mac] = (x1,y1,r1)
         z.append(z1)
         for j in range(i+1,resps.size):
             resp2 = resps.list[j]
             assert isinstance(resp2, objects.RespoRaw)
             if resp2.mac not in myRanges:
                 continue
-            r2 = (myRanges[resp2.mac])
+            r2 = (myRanges[resp2.mac]) * 0.01
             if r2 < 0:
                 continue
             x2, y2, z2 = lla2ecef((resp2.Latitude, resp2.Longitude, resp2.Altitude))
@@ -111,8 +113,28 @@ def trilateration(resps, myRanges):
         x,y = np.linalg.lstsq(A,b)[0]
     except:
         return 0,0,0
-    lat, lon, alt = ecef2lla((x[0],y[0], (sum(z)/len(z))))
-    return lat, lon, 0
+    x,y, z = x[0],y[0], (sum(z)/len(z))
+    factor = 0.5
+    max = 0
+    while True:
+        flag = True
+        for mac in seen:
+            x1, y1, r1 = seen[mac]
+            r1 += factor
+            if r1 > max:
+                max = r1
+            if sqrt(pow(x1 - x, 2) + pow(y1 - y, 2)) > r1:
+                flag = False
+                break
+        if flag:
+            break
+        factor += 0.5
+        if factor > 20:
+            break;
+    if factor > 20:
+        return 0,0,0,0
+    lat, lon, alt = ecef2lla((x,y,z))
+    return lat, lon, 0, factor
     pass
 
 # algorithm from http://journals.sagepub.com/doi/full/10.1155/2015/429104

@@ -110,37 +110,22 @@ def algorithm3(resps, user):
     assert isinstance(user, objects.userData)
     if len(user.rangeDic) < 3:
         print "Error: less than 3 ranges"
-        return 0,0,0
-    maxLat1, maxLon1 = 0.0, 0.0
-    minLat1, minLon1 = sys.maxint, sys.maxint
-    for resp in resps.list:
-        if resp.Latitude < minLat1:
-            minLat1 = resp.Latitude
-        if resp.Latitude > maxLat1:
-            maxLat1 = resp.Latitude
-        if resp.Longitude < minLon1:
-            minLon1 = resp.Longitude
-        if resp.Longitude > maxLon1:
-            maxLon1 = resp.Longitude
-    factor = 0.01
+        return (0,0,0)
+    len1 = len(user.rangeDic)
+    min = 0.0
+    lat, lon, alt = -1,-1,-1
     while True:
-        maxLon, minLon, maxLat, minLat = maxLon1, minLon1, maxLat1, minLat1
-        maxLon += (maxLon1 * factor)
-        minLon -= (minLon1 * factor)
-        maxLat += (maxLat1 * factor)
-        minLat -= (minLat1 * factor)
-        len1 = len(user.rangeDic)
-        while True:
-            result_list = map(dict, itertools.combinations(user.rangeDic.iteritems(), len1))
-            for dic in result_list:
-                lat, lon, alt = utilities.trilateration(resps, dic)
-                if (lat > minLat) and (lat < maxLat) and (lon > minLon) and (lon < maxLon):
-                    return lat, lon, alt
-            if len1 == 3:
-                break
-            len1 -= 1
-        factor += 0.005
-    return -1,-1,-1
+        result_list = map(dict, itertools.combinations(user.rangeDic.iteritems(), len1))
+        for dic in result_list:
+            lat1, lon1, alt1, factor = utilities.trilateration(resps, dic)
+            if (lat1, lon1, alt1) != (0,0,0):
+                if min == 0 or min > factor:
+                    min = factor
+                    lat, lon, alt = lat1, lon1, alt1
+        len1 -= 1
+        if len1 == 2:
+            break
+    return (lat, lon, alt)
     pass
 
 def main(argv):
