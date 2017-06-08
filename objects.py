@@ -1,5 +1,6 @@
 import csv
 import operator
+import utilities
 
 class FpRaw:
     def __init__(self, mac, rssi, range,id):
@@ -126,6 +127,11 @@ class userData:
         self.realLat = (sumLat/len(rssiDic))
         self.realLon = (sumLon/len(rssiDic))
         self.realAlt = (sumAlt/len(rssiDic))
+        self.algoLocations=((-1,-1,-1),(-1,-1,-1),(-1,-1,-1))
+        self.valid=-1 # if algo 3 succeed
+
+
+
 
     def __repr__(self):
         s = ""
@@ -135,6 +141,11 @@ class userData:
             s += "Responder {} rssi:".format(e) + str(self.rssiDic[e]) + "\n"
         s += "Real location: lat:{} lon:{} alt:{}".format(self.realLat,self.realLon,self.realAlt) + "\n"
         return s
+
+    def updateAlgoLocation(self,loc1,loc2,loc3):
+        self.algoLocations=(loc1,loc2,loc3)
+        self.valid = 1
+
 
 
 class AllusersData:
@@ -174,4 +185,16 @@ class AllusersData:
                 sumLat += float(row['Latitude'])
                 sumLon += float(row['Longitude'])
                 sumAlt += float(row['Altitude'])
+
+#holds lla and cartesian location
+
+class Location:
+    def __init__(self,lla): #assume lla is tuple of (latDeg, lonDeg, alt)
+        self.lla = lla
+        self.cartesian = utilities.lla2ecef((lla[0],lla[1],0)) # alt allwas 0
+        # self.valid=
+
+class UserLocations:
+    def __init__(self, lla):
+        self.realLoc=Location(lla)
 

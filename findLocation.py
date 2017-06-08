@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
 import sys
+
 import utilities
 import objects
 import itertools
+import error_env
 
 # database - object of fingerprint DB
 # list of live rssi reading from user
@@ -157,17 +159,30 @@ def main(argv):
     print "*************"
     print users
     pass
-    count = 0;
+    count = 0
     for user in users.list:
-        print "user {}: {}".format(i, (user.realLat, user.realLon, user.realAlt))
-        lla1 = algorithm1(db,user)
-        lla2 = algorithm2(db, user)
+        # print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
+        res_arr=utilities.readFromResult()
+        # lla1 = algorithm1(db,user)
+        lla1 = res_arr[0][i]
+        # lla2 = algorithm2(db, user)
+        lla2 = res_arr[1][i]
+        # lla2 = (0,0,0)
         lla3 = algorithm3(resps, user)
+        # lla3 = res_arr[2][i]
+        # lla3 = (1,0,0)
+        if lla3 == (-1,-1,-1):
+            count += 1
+        if lla3!=(0,0,0) and lla3!=(-1,-1,-1):
+            user.updateAlgoLocation(lla1,lla2,lla3)
         print "Algo1: {}".format(lla1)
         print "Algo2: {}".format(lla2)
         print "Algo3: {}".format(lla3)
         i += 1
+        # if i>50:
+        #     break
     print count
+    error_env.calc_error(users.list)
     pass
 
 if __name__ == "__main__":
