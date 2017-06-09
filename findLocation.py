@@ -166,7 +166,7 @@ def main(argv):
         i += 1
         # if i>50:
         #     break
-    print count
+    # print count
     error_env.calc_error(users.list)
     pass
 
