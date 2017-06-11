@@ -188,6 +188,8 @@ class AllusersData:
                 sumLat += float(row['Latitude'])
                 sumLon += float(row['Longitude'])
                 sumAlt += float(row['Altitude'])
+
+        csvfile.close()
     def calc_error_Arrays(self):
         for user in self.list:
             if user.valid != 1:
@@ -274,4 +276,16 @@ class AllUserLocations:
     def __init__(self, realLoc,algoLocations):
         self.realLoc=realLoc
         self.algoLocations=algoLocations
+
+class AlgoInfo:
+    def __init__(self, id,time):
+        self.time=time
+        self.id = id
+
+    def setRMS(self,rms):
+        self.rms=rms
+
+    def __repr__(self):
+        return "Algo {} RMS:{} Run Time:{}".format(self.id, self.rms, self.time)
+
 

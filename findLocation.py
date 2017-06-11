@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sys
-
+import time
 import utilities
 import objects
 import itertools
@@ -137,6 +137,7 @@ def main(argv):
     db.readFromCsv(argv[0])
     resps.readFromCsv(argv[1])
     users.readFromCsv(argv[2])
+    times=[0]*3
     i = 0
     print db
     print "*************"
@@ -148,14 +149,23 @@ def main(argv):
     for user in users.list:
         # print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
         res_arr=utilities.readFromResult()
-        # lla1 = algorithm1(db,user)
-        lla1 = res_arr[0][i]
+        start = time.time()
+        lla1 = algorithm1(db,user)
+        # lla1 = res_arr[0][i]
+        end=time.time()
+        times[0]+=end-start
+        start = time.time()
         # lla2 = algorithm2(db, user)
         lla2 = res_arr[1][i]
         # lla2 = (0,0,0)
+        end = time.time()
+        times[1] += end - start
+        start = time.time()
         lla3 = algorithm3(resps, user)
         # lla3 = res_arr[2][i]
         # lla3 = (1,0,0)
+        end = time.time()
+        times[2] += end - start
         if lla3 == (-1,-1,-1):
             count += 1
         if lla3!=(0,0,0) and lla3!=(-1,-1,-1):
@@ -164,10 +174,12 @@ def main(argv):
         print "Algo2: {}".format(lla2)
         print "Algo3: {}".format(lla3)
         i += 1
-        # if i>50:
+        # if i>5:
         #     break
     # print count
-    error_env.calc_error(users,resps)
+    algosInfo=[objects.AlgoInfo(i+1,times[i]) for i in range(3)]
+    # print algosInfo
+    error_env.calc_error(users,resps,algosInfo)
     pass
 
 if __name__ == "__main__":

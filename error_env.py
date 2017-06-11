@@ -4,6 +4,8 @@ import math
 import utilities
 
 
+showPlots=1 # flag which decide if show (1) plots or not (0)
+LocationsToShowOnWhiteMap=[0,1]#,2,3]
 
 def print_CDFV1(arr):
     Z=arr
@@ -18,14 +20,12 @@ def print_CDFV1(arr):
     F2 = np.array(range(N)) / float(N)
     return X1[1:], F1
     # plt.plot(X1[1:], F1, "r")
-    # # plt.plot(X2, F2)
+    # plt.plot(X2, F2)
     # axes = plt.gca()
     # # print max(arr)
     # axes.set_xlim([0, max(arr)])
     # axes.set_xlim([0, 15])
     # plt.show()
-
-
 
 
 def print_CDFV1_forAll(arrs):
@@ -48,11 +48,11 @@ def print_CDFV1_forAll(arrs):
     plt.xlabel("Localization Error [m]")
     plt.ylabel("CDF")
     plt.title('Empirical CDF')
-    plt.show()
 
 
 
 
+## version 2 of code which plots CDF graph
 def print_CDFV2(err_array):
     x2 = []
     y2 = []
@@ -71,24 +71,9 @@ def print_CDFV2(err_array):
     plt.show()
 
 
-
 def calc_rms(arr):
     return (sum(map(lambda x:x*x,arr))/(1.0*len(arr)))**0.5
 
-# def calc_error(estimatedLocationFile,realLocationFile):
-# def calc_error(UsereLst):
-#     # estimatedLocationFile=LoadData(estimatedLocationFile)
-#     # realLocationFile=LoadData(realLocationFile)
-#     estimatedLocationArr=estimatedLocationFile
-#     realLocationArr=realLocationFile
-#     err_arr=[]
-#     for i in xrange(len(estimatedLocationArr)): #assume both arr have the same length
-#         estimatedCartesian= lla2ecef((estimatedLocationArr[i][0],estimatedLocationArr[i][1],estimatedLocationArr[i][2]))n
-#         realCartesian = lla2ecef((realLocationArr[i][0], realLocationArr[i][1], realLocationArr[i][2]))
-#         err_arr.append(distance_of_2_points((estimatedCartesian[0],estimatedCartesian[1]),(realCartesian[0],realCartesian[1])))
-#     data = np.array(err_array)
-#     print "RMS is:" + calc_rms(err_arr)
-#     print_CDFV1(data)
 
 def rssiHistogram(arr):
     f1 = plt.figure()
@@ -102,34 +87,48 @@ def rssiHistogram(arr):
     plt.title('Histogrm')
     # plt.show()
 
-def calc_error(users,resps):
+
+# users- AllusersData object, suposed to contain all users data ,created in findLocation
+# resps - object of responder locations which created in findLocation
+def calc_error(users,resps,algosInfo):
     users.createKML()
     Responder=resps.list[0]
     rssiHistogram(users.getAllRssi(1))
     # rssiHistogram([1,2,3,3,4,1,2,5,1])
     users.calc_error_Arrays()
+    # choose the origin to be the cartesian coordinates of the first responder
     origin=utilities.lla2ecef((Responder.Latitude,Responder.Longitude,0))
-    showOnWhiteMap(users,origin)
-    data = [np.array(errr) for errr in users.err_arr]
+    showOnWhiteMap(users,origin,LocationsToShowOnWhiteMap)
     for i in range(3):
-        print "RMS for " +str(i+1)+" is : " + str(calc_rms(users.err_arr[i]))
+        rms=calc_rms(users.err_arr[i])
+        algosInfo[i].setRMS(rms)
+        print algosInfo[i]
+        # print "RMS for Algo" +str(i+1)+" is : " + str(rms)
     # print_CDFV1(data)
     # print_CDFV1_forAll([[data], data[5:],data[:7]])
+    data = [np.array(errr) for errr in users.err_arr]
     print_CDFV1_forAll(data)
+    if showPlots:
+        plt.show()
 
 
 
 
-def showOnWhiteMap(users,origin):
+# users- AllusersData object, suposed to contain all users data
+# origin- (x,y) the origin of the cartesian system
+#the function plots the locations
+def showOnWhiteMap(users,origin,LocationsToShow):
     shapes=['r.','bp','g^']
     f3 = plt.figure()
     ax = f3.add_subplot(111)
     ax.legend()
-    ax.plot([user.UserLocations.realLoc.cartesian[0] - origin[0] for user in users.list],
+    if 0 in LocationsToShow:
+        ax.plot([user.UserLocations.realLoc.cartesian[0] - origin[0] for user in users.list],
              [user.UserLocations.realLoc.cartesian[1] - origin[1] for user in users.list], 'o', ms=6,color='black', label='FingerPrints', fillstyle='none',linewidth=2 )
     for i in xrange(2,-1,-1):
-        XYArray=users.getCartesianLocations(i,origin)
-        ax.plot(XYArray[0], XYArray[1], shapes[i],ms=(3+i), label='Algo %i' % (i+1), fillstyle='none')
+        if i+1 in LocationsToShow:
+            XYArray=users.getCartesianLocations(i,origin)
+            ax.plot(XYArray[0], XYArray[1], shapes[i],ms=(3+i), label='Algo %i' % (i+1), fillstyle='none')
     ax.legend()
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
@@ -142,7 +141,8 @@ def showOnWhiteMap(users,origin):
 
 
 
-
+# function for tries, not paet from the released code
+#TODO:delete
 def calc_error_try():
     N=length=10000
     data1=[(i,i+1) for i in xrange(length)]
