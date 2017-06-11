@@ -167,7 +167,7 @@ def main(argv):
         # if i>50:
         #     break
     # print count
-    error_env.calc_error(users.list)
+    error_env.calc_error(users,resps)
     pass
 
 if __name__ == "__main__":

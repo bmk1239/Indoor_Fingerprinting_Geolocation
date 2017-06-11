@@ -1,6 +1,7 @@
 import csv
 import operator
 import utilities
+from simplekml import Kml
 
 class FpRaw:
     def __init__(self, mac, rssi, range,id):
@@ -127,6 +128,7 @@ class userData:
         self.realLat = (sumLat/len(rssiDic))
         self.realLon = (sumLon/len(rssiDic))
         self.realAlt = (sumAlt/len(rssiDic))
+        self.UserLocations = AllUserLocations(Location((self.realLat,self.realLon,self.realAlt)),(-1, -1, -1))
         self.algoLocations=((-1,-1,-1),(-1,-1,-1),(-1,-1,-1))
         self.valid=-1 # if algo 3 succeed
 
@@ -143,7 +145,7 @@ class userData:
         return s
 
     def updateAlgoLocation(self,loc1,loc2,loc3):
-        self.algoLocations=(loc1,loc2,loc3)
+        self.UserLocations.algoLocations=(Location(loc1),Location(loc2),Location(loc3))
         self.valid = 1
 
 
@@ -152,6 +154,7 @@ class AllusersData:
     def __init__(self):
         self.list = []
         self.size = 0
+        self.err_arr = [[], [], []]
 
     def __repr__(self):
         s = ""
@@ -185,16 +188,90 @@ class AllusersData:
                 sumLat += float(row['Latitude'])
                 sumLon += float(row['Longitude'])
                 sumAlt += float(row['Altitude'])
+    def calc_error_Arrays(self):
+        for user in self.list:
+            if user.valid != 1:
+                continue
+            realCartesian = user.UserLocations.realLoc.cartesian
+            for i in range(3):
+                estimatedCartesian = user.UserLocations.algoLocations[i].cartesian
+                # if distance_of_2_points((estimatedCartesian[0], estimatedCartesian[1]),(realCartesian[0], realCartesian[1])) > 100:
+                #     continue
+                self.err_arr[i].append(utilities.distance_of_2_points((estimatedCartesian[0], estimatedCartesian[1]),
+                                                       (realCartesian[0], realCartesian[1])))
+    def getCartesianLocations(self,i,origin):
+        XYArray=([],[])
+        for user in self.list:
+            if user.valid!=-1:
+                XYArray[0].append(user.UserLocations.algoLocations[i].cartesian[0]-origin[0])
+                XYArray[1].append(user.UserLocations.algoLocations[i].cartesian[1]-origin[1])
+        return XYArray
+
+    def getAllRssi(self,ignore):
+        arr=[]
+        for user in self.list:
+            for rssi in user.rssiDic:
+                value=user.rssiDic[rssi]
+                if ignore and value==-120:
+                    continue
+                arr.append(value)
+        return  arr
+    # def createCSVforGoogleEarth(self):
+    #     csvfile1 = open("AlgoResultsToGoogleEarth.csv", "wb");
+    #     fieldnames = ['Name', 'Latitude', 'Longitude', 'LabelScale', 'IconColor', 'Folder','Icon']
+    #     writer1 = csv.DictWriter(csvfile1, fieldnames=fieldnames)
+    #     writer1.writeheader()
+    #     for user in self.list:
+    #         if user.valid != -1:
+    #             writer1.writerow({'mac': str(e), 'rssi[db]': str(ResultDic[e][0]), 'Latitude': str(lat[e]),
+    #                  'Longitude': str(lon[e]), 'Altitude': alt[e][:-1], 'range[cm]': str(ResultDic[e][1])})
+
+
+    # icons -http://kml4earth.appspot.com/icons.html
+    # simplekml- http://simplekml.readthedocs.io/en/latest/index.html
+    def createKML(self):
+        lat1=[32.1086076,32.1086076,32.1088341,32.10887584,32.1088403,32.1088447,32.1088341,32.1088394,32.1088344,32.1088297,32.1088297]
+        lon1=[34.8047626,34.8047626,34.8052631,34.80518219,34.8052278,34.8052696,34.8052631,34.8052783,34.8052862,34.8052952,34.8052952]
+        kml = Kml()
+        folders=[kml.newfolder(name="Algo 1"),kml.newfolder(name="Algo 2"), kml.newfolder(name="Algo 3"), kml.newfolder(name="Real Locations")]
+        colors=['ff0000ff','ffff0000','FF008000','FF000000']
+        i=0
+        for user in self.list:
+            if user.valid != -1:
+                for j in range(3):
+                    fol=folders[j]
+                    a1=user.UserLocations.algoLocations[j].lla[0]
+                    b1=user.UserLocations.algoLocations[j].lla[1]
+                    pnt = fol.newpoint(name="A_"+str(j)+"_P_"+str(i), coords=[(b1, a1)])
+                    pnt.style.labelstyle.scale = 0.2
+                    pnt.style.iconstyle.color = colors[j]
+                    pnt.style.iconstyle.scale = 0.5  # Icon thrice as big
+                    pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/pal4/icon57.png'
+
+                j=3
+                fol = folders[j]
+                a1 = user.UserLocations.realLoc.lla[0]
+                b1 = user.UserLocations.realLoc.lla[1]
+                pnt = fol.newpoint(name="RL_P_" + str(i), coords=[(b1, a1)])
+                pnt.style.labelstyle.scale = 0.2
+                pnt.style.iconstyle.color = colors[j]
+                pnt.style.iconstyle.scale = 0.5  # Icon thrice as big
+                pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/pal4/icon56.png'
+                i = i + 1
+        # ground = kml.newgroundoverlay(name='GroundOverlay')
+        # ground.icon.href = 'map.png'
+        # ground.gxlatlonquad.coords = [(34.8055585549771,32.1089857421224),(34.8055585549771,32.108480189356),(34.8048439153402,32.108480189356),(34.8048439153402,32.1089857421224),(34.8055585549771,32.1089857421224)]
+        kml.save("AllLocations.kml")
 
 #holds lla and cartesian location
-
 class Location:
     def __init__(self,lla): #assume lla is tuple of (latDeg, lonDeg, alt)
         self.lla = lla
         self.cartesian = utilities.lla2ecef((lla[0],lla[1],0)) # alt allwas 0
         # self.valid=
 
-class UserLocations:
-    def __init__(self, lla):
-        self.realLoc=Location(lla)
+class AllUserLocations:
+    def __init__(self, realLoc,algoLocations):
+        self.realLoc=realLoc
+        self.algoLocations=algoLocations
 

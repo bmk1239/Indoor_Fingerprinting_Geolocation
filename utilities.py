@@ -178,6 +178,12 @@ def readFromResult():
     return ret_arr
 
 
+# gets two points and return the distace between them.
+def distance_of_2_points(estimatedLocation,realLocation):
+    return math.hypot(estimatedLocation[0] - realLocation[0], estimatedLocation[1] - realLocation[1])
+
+def get_error_array(data1,data2):
+    return [distance_of_2_points(data1[i],data2[i]) for i in xrange(len)]
 
 
 
