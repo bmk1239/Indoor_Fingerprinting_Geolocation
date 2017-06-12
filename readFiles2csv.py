@@ -5,8 +5,6 @@ import csv
 import utilities
 import xlrd
 
-# list of responder macs in second floor
-responders = []
 
 # ResultDic - Dictionary contains rssi value and range value from each responder
 # timestamp - Dictionary of timestamp to compare with timestamp in coordFile
@@ -14,8 +12,6 @@ responders = []
 # writer - writer of the open csv file
 # create fingerprint entity in the DB
 def createFingerprint(ResultDic, timestamp, Cord_arr, writer):
-    if len(ResultDic) != 15:
-        print len(ResultDic)
     lat, lon, alt = utilities.findLoc(timestamp, Cord_arr)
     # go over each measurement in the fingerprint and write it to csv file
     for e in ResultDic:
@@ -24,10 +20,10 @@ def createFingerprint(ResultDic, timestamp, Cord_arr, writer):
 
 # listOfFiles - tuple of result file and coord file
 # create csv file with DB of fingerprints
-def readFiles2csv(listOfFiles):
+def readFiles2csv(listOfFiles, floor, countNum):
     # data base of fingerprint in csv format
-    csvfile1 = open("Database.csv", "wb");
-    csvfile2 = open("User.csv", "wb");
+    csvfile1 = open(''.join(["Database_",str(floor),"_0.",str(countNum-1),".csv"]), "wb");
+    csvfile2 = open(''.join(["User_",str(floor),"_0.",str(10-(countNum-1)),".csv"]), "wb");
     # header of DB
     fieldnames = ['mac', 'rssi[db]', 'Latitude', 'Longitude','Altitude' ,'range[cm]']
     writer1 = csv.DictWriter(csvfile1, fieldnames=fieldnames)
@@ -36,10 +32,13 @@ def readFiles2csv(listOfFiles):
     writer2.writeheader()
     # go over each file in the list
     j = 0
-    with open("responders.csv") as csvfile:
+    # list of responder macs in second floor
+    responders = []
+    with open(''.join(["responders_",str(floor),".csv"])) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             responders.append(row['mac'])
+    print len(responders)
     while j < len(listOfFiles):
         print listOfFiles[j], listOfFiles[j + 1]
         result = listOfFiles[j]
@@ -65,7 +64,7 @@ def readFiles2csv(listOfFiles):
                     # if we finished go over each responder in the fingerprint(16 responders at most), write result into DB
                     if s == seen:
                         # write fingerprint into csv file
-                        if count < 10:
+                        if count < countNum:
                             createFingerprint(ResultDic, timestamp, Cord_arr , writer1)
                         else:
                             createFingerprint(ResultDic, timestamp, Cord_arr, writer2)
@@ -95,7 +94,7 @@ def readFiles2csv(listOfFiles):
                     i += 1
                 # save it in Dictionary
             if bool(ResultDic):
-                if count < 10:
+                if count < countNum:
                     createFingerprint(ResultDic, timestamp, Cord_arr, writer1)
                 else:
                     createFingerprint(ResultDic, timestamp, Cord_arr, writer2)
@@ -105,10 +104,10 @@ def readFiles2csv(listOfFiles):
 
 # xls file with responders locations
 # create csv file contains responder location and Description
-def readXls2csv(File):
+def readXls2csv(File, floor):
     sheet = xlrd.open_workbook(File).sheet_by_index(0)
     # responder file in csv format
-    csvfile = open("responders.csv", "wb");
+    csvfile = open(''.join(["responders_",str(floor),".csv"]), "wb");
     # header of responder csv file
     fieldnames = ['mac', 'Latitude', 'Longitude','Altitude', 'Description']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -121,7 +120,7 @@ def readXls2csv(File):
         # go over each cell in file
         for j in range(0, len(sheet.row_values(i))):
             if j == 1:
-                if int(sheet.cell_value(i,j)) != 2:
+                if int(sheet.cell_value(i,j)) != floor:
                     flag = True
                     break
             if j == 3:
@@ -136,7 +135,7 @@ def readXls2csv(File):
             continue
         writer.writerow(
             {'mac': mac, 'Latitude': str(lat),
-             'Longitude': str(lon), 'Altitude': str(2.5),'Description': descrip})
+             'Longitude': str(lon), 'Altitude': str(0),'Description': descrip})
     csvfile.close();
 pass
 
@@ -145,13 +144,20 @@ def main(argv):
     if(len(argv) < 1):
         print("Error: wrong number of arguments");
         return -1
+    floors = [0,1,2]
     if (len(argv) == 1):
-        # read responders from 2 floor locations
-        readXls2csv(argv[0])
+        for floor in floors:
+            print "floor:" , floor
+            # read responders from 2 floor locations
+            readXls2csv(argv[0], floor)
     else:
-        # read measurements into DB in csv format
-        readFiles2csv(argv[0:])
-
+        l = [10, 8, 6, 4, 2]
+        for floor in floors:
+            print "floor:", floor
+            for num in l:
+                print "count: ", num
+                # read measurements into DB in csv format
+                readFiles2csv(argv[0:], floor,num)
     pass
 
 if __name__ == "__main__":

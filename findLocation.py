@@ -2,10 +2,12 @@
 
 import sys
 import time
+import operator
 import utilities
 import objects
 import itertools
 import error_env
+
 
 # database - object of fingerprint DB
 # list of live rssi reading from user
@@ -27,20 +29,13 @@ def algorithm1(database, user):
     assert isinstance(database, objects.Database)
     assert isinstance(user, objects.userData)
     allDistances(database, user.rssiDic)
-    min = -1
-    imin = -1
     # using 1 nearest neighbor algorithm1 to find user location
+    minDic = {}
     for i in range(database.size):
         fp = database.list[i]
-        assert isinstance(fp, objects.FingerPrint)
-        if imin == -1:
-            min = fp.distance
-            imin = i
-        else:
-            if min > fp.distance:
-                min = fp.distance
-                imin = i
-    fp = database.list[imin]
+        minDic[i] = fp.distance
+    imin = min(minDic.items(), key=lambda x: x[1])
+    fp = database.list[imin[0]]
     assert isinstance(fp, objects.FingerPrint)
     lat = fp.Latitude
     lon = fp.Longitude
@@ -55,38 +50,25 @@ def algorithm2(database, user):
     assert isinstance(database, objects.Database)
     assert isinstance(user, objects.userData)
     allDistances(database, user.rssiDic)
-    imins = []
     myRanges = user.rangeDic
+    minDic = {}
+    for i in range(database.size):
+        fp = database.list[i]
+        minDic[i] = fp.distance
+    sorted_minDic = sorted(minDic.items(), key=operator.itemgetter(1))
+    i1 = 0
     while True:
-        min = -1
-        imin = -1
-        for i in range(database.size):
-            fp = database.list[i]
-            assert isinstance(fp, objects.FingerPrint)
-            if i in imins:
-                continue
-            if imin == -1:
-                min = fp.distance
-                imin = i
-            else:
-                if min > fp.distance:
-                    min = fp.distance
-                    imin = i
-        if imin == -1:
-            fp = database.list[imins[0]]
+        if i1 == len(sorted_minDic):
+            fp = database.list[sorted_minDic[0][0]]
             assert isinstance(fp, objects.FingerPrint)
             lat = fp.Latitude
             lon = fp.Longitude
             alt = fp.Altitude
             return lat, lon, alt
-        imins.append(imin)
         flag = True
-        fp = database.list[imin]
+        fp = database.list[sorted_minDic[i1][0]]
         assert isinstance(fp, objects.FingerPrint)
-        count = 0
         for i in range(fp.size):
-            if count == 2:
-                break;
             fpRaw = fp.list[i]
             assert isinstance(fpRaw, objects.FpRaw)
             if fpRaw.mac in myRanges:
@@ -94,12 +76,12 @@ def algorithm2(database, user):
                         (abs(myRanges[fpRaw.mac] - fp.distance) > fpRaw.range)):
                     flag = False
                     break
-                count += 1
         if flag:
             lat = fp.Latitude
             lon = fp.Longitude
             alt = fp.Altitude
             return lat, lon, alt
+        i1 += 1
     pass
 
 # resps - object of responder locations
@@ -146,8 +128,9 @@ def main(argv):
     print users
     pass
     count = 0
+    count1 = 0
     for user in users.list:
-        # print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
+        print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
         res_arr=utilities.readFromResult()
         start = time.time()
         lla1 = algorithm1(db,user)
@@ -155,8 +138,8 @@ def main(argv):
         end=time.time()
         times[0]+=end-start
         start = time.time()
-        # lla2 = algorithm2(db, user)
-        lla2 = res_arr[1][i]
+        lla2 = algorithm2(db, user)
+        #lla2 = res_arr[1][i]
         # lla2 = (0,0,0)
         end = time.time()
         times[1] += end - start
@@ -166,17 +149,19 @@ def main(argv):
         # lla3 = (1,0,0)
         end = time.time()
         times[2] += end - start
-        if lla3 == (-1,-1,-1):
-            count += 1
+        if lla2 != lla1:
+            count1 += 1
         if lla3!=(0,0,0) and lla3!=(-1,-1,-1):
             user.updateAlgoLocation(lla1,lla2,lla3)
+        else:
+            count += 1
         print "Algo1: {}".format(lla1)
         print "Algo2: {}".format(lla2)
         print "Algo3: {}".format(lla3)
         i += 1
         # if i>5:
         #     break
-    # print count
+    print count,count1
     algosInfo=[objects.AlgoInfo(i+1,times[i]) for i in range(3)]
     # print algosInfo
     error_env.calc_error(users,resps,algosInfo)

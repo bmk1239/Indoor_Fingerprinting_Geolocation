@@ -144,7 +144,7 @@ def trilateration(resps, myRanges):
 # calculate euclidean distance from rssi
 def calcDist(f_0, f_i, q):
     sum = 0.0
-    for i in range(0,len(f_0)):
+    for i in range(0,min(len(f_0),f_i.size)):
         fpRaw = f_i.list[i]
         assert isinstance(fpRaw, objects.FpRaw)
         mac = fpRaw.mac
