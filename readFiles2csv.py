@@ -68,8 +68,10 @@ def readFiles2csv(listOfFiles, floor, countNum):
                             createFingerprint(ResultDic, timestamp, Cord_arr , writer1)
                         else:
                             createFingerprint(ResultDic, timestamp, Cord_arr, writer2)
+                        if count == 10:
                             count = 1
-                        count += 1
+                        else:
+                            count += 1
                         # go to next fingerprint
                         ResultDic.clear()
                         timestamp.clear()
