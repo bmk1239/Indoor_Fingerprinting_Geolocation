@@ -5,7 +5,7 @@ import utilities
 
 
 showPlots=1 # flag which decide if show (1) plots or not (0)
-LocationsToShowOnWhiteMap=[0,1]#,2,3]
+LocationsToShowOnWhiteMap=[0,1,2,3]
 
 def print_CDFV1(arr):
     Z=arr
@@ -48,6 +48,7 @@ def print_CDFV1_forAll(arrs):
     plt.xlabel("Localization Error [m]")
     plt.ylabel("CDF")
     plt.title('Empirical CDF')
+    plt.savefig("figures/CDF.png")
 
 
 
@@ -68,6 +69,7 @@ def print_CDFV2(err_array):
     plt.plot(x2, y2, "g")
     axes = plt.gca()
     axes.set_xlim([0, 10])
+    plt.savefig("figures/CDF.png")
     plt.show()
 
 
@@ -84,7 +86,8 @@ def rssiHistogram(arr):
     ax1.legend()
     plt.xlabel("RSSI [db]")
     plt.ylabel("Count")
-    plt.title('Histogrm')
+    plt.title('Histogram')
+    plt.savefig("figures/RssiHistogram.pdf")
     # plt.show()
 
 
@@ -98,7 +101,10 @@ def calc_error(users,resps,algosInfo):
     users.calc_error_Arrays()
     # choose the origin to be the cartesian coordinates of the first responder
     origin=utilities.lla2ecef((Responder.Latitude,Responder.Longitude,0))
-    showOnWhiteMap(users,origin,LocationsToShowOnWhiteMap)
+    powerset = lambda s: [[x for j, x in enumerate(s) if (i >> j) & 1] for i in xrange(2 ** len(s))]
+    for algoset in powerset(LocationsToShowOnWhiteMap)[1:]:
+      showOnWhiteMap(users,origin,algoset)
+    print max(users.err_arr[1])
     for i in range(3):
         rms=calc_rms(users.err_arr[i])
         algosInfo[i].setRMS(rms)
@@ -122,16 +128,23 @@ def showOnWhiteMap(users,origin,LocationsToShow):
     f3 = plt.figure()
     ax = f3.add_subplot(111)
     ax.legend()
+    #plt.ion()
     if 0 in LocationsToShow:
         ax.plot([user.UserLocations.realLoc.cartesian[0] - origin[0] for user in users.list],
              [user.UserLocations.realLoc.cartesian[1] - origin[1] for user in users.list], 'o', ms=6,color='black', label='FingerPrints', fillstyle='none',linewidth=2 )
     for i in xrange(2,-1,-1):
         if i+1 in LocationsToShow:
             XYArray=users.getCartesianLocations(i,origin)
-            ax.plot(XYArray[0], XYArray[1], shapes[i],ms=(3+i), label='Algo %i' % (i+1), fillstyle='none')
+            #for j in range(len(XYArray[0])):
+          #      ax.plot(XYArray[0][:j], XYArray[1][:j], shapes[i],ms=(3+i), label='Algo %i' % (i+1), fillstyle='none')
+             #   plt.pause(0.05)
+            ax.plot(XYArray[0], XYArray[1], shapes[i], ms=(3 + i), label='Algo %i' % (i + 1), fillstyle='none')
     ax.legend()
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
+    algosstring="_"+"_".join(str(algo) for algo in LocationsToShow)
+    plt.savefig("figures/whiteMap"+algosstring+".svg")
+    # plt.pause(0.05)
     # plt.title('Space')
     # plt.plot(arr[0], arr[1], 'ro')
     # plt.plot(arr[0][:10], arr[1][5:15], 'bs')

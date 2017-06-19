@@ -167,7 +167,7 @@ def minDiffEntry(arr,time):
     return  minindex
 
 
-
+#only debug function
 def readFromResult():
     file_arr=["algo1res.txt","algo2res.txt","algo3res.txt"]
     ret_arr=[[],[],[]]

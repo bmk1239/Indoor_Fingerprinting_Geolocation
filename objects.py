@@ -73,6 +73,9 @@ class Database:
                     seen = []
                 mac = row['mac']
                 rssi = float(row['rssi[db]'])
+                # if float(row['range[cm]']) < 0.0:
+                #     range=20.0
+                # else:
                 range = float(row['range[cm]'])
                 sumLat += float(row['Latitude'])
                 sumLon += float(row['Longitude'])
@@ -185,28 +188,34 @@ class AllusersData:
                 rssiDic[mac] = float(row['rssi[db]'])
                 if float(row['range[cm]']) > 0.0:
                     rangeDic[mac] = float(row['range[cm]'])
+                # if float(row['range[cm]']) < 0.0:
+                #     rangeDic[mac] = 20.0
                 sumLat += float(row['Latitude'])
                 sumLon += float(row['Longitude'])
                 sumAlt += float(row['Altitude'])
 
         csvfile.close()
+
+
     def calc_error_Arrays(self):
         for user in self.list:
             if user.valid != 1:
                 continue
             realCartesian = user.UserLocations.realLoc.cartesian
             for i in range(3):
-                estimatedCartesian = user.UserLocations.algoLocations[i].cartesian
+                if user.UserLocations.algoLocations[i].valid:
+                    estimatedCartesian = user.UserLocations.algoLocations[i].cartesian
                 # if distance_of_2_points((estimatedCartesian[0], estimatedCartesian[1]),(realCartesian[0], realCartesian[1])) > 100:
                 #     continue
-                self.err_arr[i].append(utilities.distance_of_2_points((estimatedCartesian[0], estimatedCartesian[1]),
+                    self.err_arr[i].append(utilities.distance_of_2_points((estimatedCartesian[0], estimatedCartesian[1]),
                                                        (realCartesian[0], realCartesian[1])))
     def getCartesianLocations(self,i,origin):
         XYArray=([],[])
         for user in self.list:
             if user.valid!=-1:
-                XYArray[0].append(user.UserLocations.algoLocations[i].cartesian[0]-origin[0])
-                XYArray[1].append(user.UserLocations.algoLocations[i].cartesian[1]-origin[1])
+                if user.UserLocations.algoLocations[i].valid:
+                    XYArray[0].append(user.UserLocations.algoLocations[i].cartesian[0]-origin[0])
+                    XYArray[1].append(user.UserLocations.algoLocations[i].cartesian[1]-origin[1])
         return XYArray
 
     def getAllRssi(self,ignore):
@@ -242,6 +251,8 @@ class AllusersData:
             if user.valid != -1:
                 for j in range(3):
                     fol=folders[j]
+                    if user.UserLocations.algoLocations[j].valid==0:
+                        continue
                     a1=user.UserLocations.algoLocations[j].lla[0]
                     b1=user.UserLocations.algoLocations[j].lla[1]
                     pnt = fol.newpoint(name="A_"+str(j)+"_P_"+str(i), coords=[(b1, a1)])
@@ -270,7 +281,7 @@ class Location:
     def __init__(self,lla): #assume lla is tuple of (latDeg, lonDeg, alt)
         self.lla = lla
         self.cartesian = utilities.lla2ecef((lla[0],lla[1],0)) # alt allwas 0
-        # self.valid=
+        self.valid=[1,0][lla==(0,0,0) or lla==(-1,-1,-1)]
 
 class AllUserLocations:
     def __init__(self, realLoc,algoLocations):
@@ -286,6 +297,6 @@ class AlgoInfo:
         self.rms=rms
 
     def __repr__(self):
-        return "Algo {} RMS:{} Run Time:{}".format(self.id, self.rms, self.time)
+        return "Algo {} RMSE:{} Run Time:{}".format(self.id, self.rms, self.time)
 
 

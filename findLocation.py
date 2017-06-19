@@ -128,7 +128,7 @@ def main(argv):
     print users
     pass
     count = 0
-    count1 = 0
+    algo2ImprovedPnt = 0
     for user in users.list:
         print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
         res_arr=utilities.readFromResult()
@@ -150,7 +150,7 @@ def main(argv):
         end = time.time()
         times[2] += end - start
         if lla2 != lla1:
-            count1 += 1
+            algo2ImprovedPnt += 1
         if lla3!=(0,0,0) and lla3!=(-1,-1,-1):
             user.updateAlgoLocation(lla1,lla2,lla3)
         else:
@@ -161,7 +161,8 @@ def main(argv):
         i += 1
         # if i>5:
         #     break
-    print count,count1
+    print count,algo2ImprovedPnt
+    print "The number of points that Algorithm 2 has improved is: "+ str(algo2ImprovedPnt)
     algosInfo=[objects.AlgoInfo(i+1,times[i]) for i in range(3)]
     # print algosInfo
     error_env.calc_error(users,resps,algosInfo)
