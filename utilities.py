@@ -6,6 +6,10 @@ from scipy import cos, sin, arctan, sqrt, arctan2
 import objects
 import re
 
+#global variables
+runAll=0
+folderName="figures/db"
+
 # assume WGS84
 wgs84_a = 6378137.0
 wgs84_f = 1.0 / 298.257223563
@@ -161,6 +165,17 @@ def minDiffEntry(arr,time):
     for i in xrange(len(arr)):
         diff=abs(time-arr[i][0])
         if abs(time-arr[i][0])<min:
+            min=diff
+            minindex=i
+            # print minindex,diff
+    return  minindex
+
+def minDiffEntry(arr,value):
+    min=9999999999999999
+    minindex=-1
+    for i in xrange(len(arr)):
+        diff=abs(value-arr[i])
+        if abs(value-arr[i])<min:
             min=diff
             minindex=i
             # print minindex,diff

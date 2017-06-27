@@ -6,7 +6,7 @@ import operator
 import utilities
 import objects
 import itertools
-import error_env
+import results
 
 
 # database - object of fingerprint DB
@@ -119,6 +119,7 @@ def main(argv):
     db.readFromCsv(argv[0])
     resps.readFromCsv(argv[1])
     users.readFromCsv(argv[2])
+    utilities.folderName+=argv[0][:-4][-3:]+"/"
     times=[0]*3
     i = 0
     print db
@@ -130,7 +131,7 @@ def main(argv):
     count = 0
     algo2ImprovedPnt = 0
     for user in users.list:
-        print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
+        # print "user {}: {}".format(i,(user.realLat,user.realLon,user.realAlt))
         res_arr=utilities.readFromResult()
         start = time.time()
         lla1 = algorithm1(db,user)
@@ -155,9 +156,9 @@ def main(argv):
             user.updateAlgoLocation(lla1,lla2,lla3)
         else:
             count += 1
-        print "Algo1: {}".format(lla1)
-        print "Algo2: {}".format(lla2)
-        print "Algo3: {}".format(lla3)
+        # print "Algo1: {}".format(lla1)
+        # print "Algo2: {}".format(lla2)
+        # print "Algo3: {}".format(lla3)
         i += 1
         # if i>5:
         #     break
@@ -165,7 +166,7 @@ def main(argv):
     print "The number of points that Algorithm 2 has improved is: "+ str(algo2ImprovedPnt)
     algosInfo=[objects.AlgoInfo(i+1,times[i]) for i in range(3)]
     # print algosInfo
-    error_env.calc_error(users,resps,algosInfo)
+    results.calc_error(users, resps, algosInfo)
     pass
 
 if __name__ == "__main__":

@@ -132,7 +132,6 @@ class userData:
         self.realLon = (sumLon/len(rssiDic))
         self.realAlt = (sumAlt/len(rssiDic))
         self.UserLocations = AllUserLocations(Location((self.realLat,self.realLon,self.realAlt)),(-1, -1, -1))
-        self.algoLocations=((-1,-1,-1),(-1,-1,-1),(-1,-1,-1))
         self.valid=-1 # if algo 3 succeed
 
 
@@ -244,24 +243,15 @@ class AllusersData:
         lat1=[32.1086076,32.1086076,32.1088341,32.10887584,32.1088403,32.1088447,32.1088341,32.1088394,32.1088344,32.1088297,32.1088297]
         lon1=[34.8047626,34.8047626,34.8052631,34.80518219,34.8052278,34.8052696,34.8052631,34.8052783,34.8052862,34.8052952,34.8052952]
         kml = Kml()
-        folders=[kml.newfolder(name="Algo 1"),kml.newfolder(name="Algo 2"), kml.newfolder(name="Algo 3"), kml.newfolder(name="Real Locations")]
+        algoNameLst = ["1 Basic RSSI Algorithm", "2 RSSI + FTM Algorithm", "3 Trilateration Algorithm"]
+        folders=[kml.newfolder(name=algoNameLst[0]),kml.newfolder(name=algoNameLst[1]), kml.newfolder(name=algoNameLst[2]), kml.newfolder(name="Real Locations")]
         colors=['ff0000ff','ffff0000','FF008000','FF000000']
+        icons=["http://maps.google.com/mapfiles/dir_0.png","http://maps.google.com/mapfiles/kml/pal4/icon48.png","http://maps.google.com/mapfiles/kml/pal4/icon60.png"]
+        iconsSize=[0.6,0.5,0.4]
         i=0
         for user in self.list:
             if user.valid != -1:
-                for j in range(3):
-                    fol=folders[j]
-                    if user.UserLocations.algoLocations[j].valid==0:
-                        continue
-                    a1=user.UserLocations.algoLocations[j].lla[0]
-                    b1=user.UserLocations.algoLocations[j].lla[1]
-                    pnt = fol.newpoint(name="A_"+str(j)+"_P_"+str(i), coords=[(b1, a1)])
-                    pnt.style.labelstyle.scale = 0.2
-                    pnt.style.iconstyle.color = colors[j]
-                    pnt.style.iconstyle.scale = 0.5  # Icon thrice as big
-                    pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/pal4/icon57.png'
-
-                j=3
+                j = 3
                 fol = folders[j]
                 a1 = user.UserLocations.realLoc.lla[0]
                 b1 = user.UserLocations.realLoc.lla[1]
@@ -270,11 +260,28 @@ class AllusersData:
                 pnt.style.iconstyle.color = colors[j]
                 pnt.style.iconstyle.scale = 0.5  # Icon thrice as big
                 pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/pal4/icon56.png'
+                iconSize = 0.8
+                for j in range(3):
+                # for j in range(2,-1,-1):
+                    fol=folders[j]
+                    if user.UserLocations.algoLocations[j].valid==0:
+                        continue
+                    a1=user.UserLocations.algoLocations[j].lla[0]
+                    b1=user.UserLocations.algoLocations[j].lla[1]
+                    pnt = fol.newpoint(name="A_"+str(j)+"_P_"+str(i), coords=[(b1, a1)])
+                    pnt.style.labelstyle.scale = 0.2
+                    # pnt.style.iconstyle.color = colors[j]
+                    pnt.style.iconstyle.scale = iconsSize[j]  # Icon thrice as big
+                    # pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/pal4/icon57.png'
+                    pnt.style.iconstyle.icon.href = icons[j]
+                    iconSize=iconSize-0.1
+
+
                 i = i + 1
         # ground = kml.newgroundoverlay(name='GroundOverlay')
         # ground.icon.href = 'map.png'
         # ground.gxlatlonquad.coords = [(34.8055585549771,32.1089857421224),(34.8055585549771,32.108480189356),(34.8048439153402,32.108480189356),(34.8048439153402,32.1089857421224),(34.8055585549771,32.1089857421224)]
-        kml.save("AllLocations.kml")
+        kml.save(utilities.folderName+"AllLocations.kml")
 
 #holds lla and cartesian location
 class Location:
@@ -297,6 +304,6 @@ class AlgoInfo:
         self.rms=rms
 
     def __repr__(self):
-        return "Algo {} RMSE:{} Run Time:{}".format(self.id, self.rms, self.time)
+        return "Algo {} RMSE:{} Run Time:{}".format(self.id, str(round(self.rms,4)), str(round(self.time,4)))
 
 
